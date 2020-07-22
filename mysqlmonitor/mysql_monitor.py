@@ -52,64 +52,64 @@ class MySQLMonitorInfo():
             Status_dict["alive"] = 0
             return Status_dict
 
-            # 通过master的信息可以了解到MySQL生成binlog的速度，可以侧面了解TPS和replication的压力
+            # 通过main的信息可以了解到MySQL生成binlog的速度，可以侧面了解TPS和replication的压力
 
     @property
-    def master_info(self):
+    def main_info(self):
         try:
             m = MySQLdb.connect(host=self.host, user=self.user, passwd=self.password, port=self.port, charset='utf8',
                                 connect_timeout=2)
-            query = "show master status"
+            query = "show main status"
             cursor = m.cursor()
             cursor.execute(query)
-            Master_dict = {}
+            Main_dict = {}
 
             Str_string = cursor.fetchone()
 
             if Str_string <> None:
                 file, position, _, _, _ = Str_string
-                Master_dict['binlog_file_no'] = int(file.split('.')[1])
-                Master_dict['binlog_position'] = position
+                Main_dict['binlog_file_no'] = int(file.split('.')[1])
+                Main_dict['binlog_position'] = position
 
             cursor.close()
             m.close()
 
-            return Master_dict
+            return Main_dict
 
 
         except Exception as e:
             print(datetime.datetime.now())
             print(e)
-            Master_dict = {}
-            return Master_dict
+            Main_dict = {}
+            return Main_dict
 
-            # 通过slave信息获取延迟的详细信息
+            # 通过subordinate信息获取延迟的详细信息
 
     @property
-    def slave_info(self):
+    def subordinate_info(self):
         try:
             m = MySQLdb.connect(host=self.host, user=self.user, passwd=self.password, port=self.port, charset='utf8',
                                 connect_timeout=2)
-            query = "show slave status"
+            query = "show subordinate status"
             cursor = m.cursor()
             cursor.execute(query)
-            slave_dict = {}
+            subordinate_dict = {}
 
             Str_string = cursor.fetchone()
 
             if Str_string <> None:
-                slave_dict['Slave_IO_Running'] = Str_string[10]
-                slave_dict['Slave_SQL_Running'] = Str_string[11]
-                slave_dict['Seconds_Behind_Master'] = Str_string[32]
+                subordinate_dict['Subordinate_IO_Running'] = Str_string[10]
+                subordinate_dict['Subordinate_SQL_Running'] = Str_string[11]
+                subordinate_dict['Seconds_Behind_Main'] = Str_string[32]
 
             cursor.close()
             m.close()
-            return slave_dict
+            return subordinate_dict
         except Exception as e:
             print(datetime.datetime.now())
             print(e)
-            slave_dict = {}
-            return slave_dict
+            subordinate_dict = {}
+            return subordinate_dict
 
     @property
     def engine_info(self):
@@ -205,9 +205,9 @@ if __name__ == '__main__':
     mysql_stat_list = []  # 经过计算整理后的key-value
 
     if stat_info['alive'] == 0:
-        master_info = {}
+        main_info = {}
         engine_info = {}
-        slave_info = {}
+        subordinate_info = {}
         size_info = {}
         size_info = {}
 
@@ -228,9 +228,9 @@ if __name__ == '__main__':
 
     else:
 
-        master_info = conn.master_info
+        main_info = conn.main_info
         engine_info = conn.engine_info
-        slave_info = conn.slave_info
+        subordinate_info = conn.subordinate_info
         size_info = {}
         # 每10分钟采样一次
         if int(timestamp / 60) % 10 == 0:
@@ -323,9 +323,9 @@ if __name__ == '__main__':
             }
             mysql_stat_list.append(falcon_format)
 
-        # json格式输出show master info的性能指标
-        if master_info:
-            for _key, _value in master_info.items():
+        # json格式输出show main info的性能指标
+        if main_info:
+            for _key, _value in main_info.items():
                 falcon_format = {
                     'Metric': 'gt.mysql.%s' % (_key),
                     'Endpoint': endpoint,
@@ -337,15 +337,15 @@ if __name__ == '__main__':
                 }
                 mysql_stat_list.append(falcon_format)
 
-                # json格式输出show slave info的性能指标
-        if slave_info:
+                # json格式输出show subordinate info的性能指标
+        if subordinate_info:
 
-            if slave_info['Slave_IO_Running'] == 'Yes' and slave_info['Slave_IO_Running'] == 'Yes':
-                _key = 'Slave_Running'
+            if subordinate_info['Subordinate_IO_Running'] == 'Yes' and subordinate_info['Subordinate_IO_Running'] == 'Yes':
+                _key = 'Subordinate_Running'
                 _value = 1
 
             else:
-                _key = 'Slave_Running'
+                _key = 'Subordinate_Running'
                 _value = 0
 
             falcon_format = {
@@ -359,8 +359,8 @@ if __name__ == '__main__':
             }
             mysql_stat_list.append(falcon_format)
 
-            _key = 'Seconds_Behind_Master'
-            _value = slave_info['Seconds_Behind_Master']
+            _key = 'Seconds_Behind_Main'
+            _value = subordinate_info['Seconds_Behind_Main']
             falcon_format = {
                 'Metric': 'gt.mysql.%s' % (_key),
                 'Endpoint': endpoint,
@@ -387,7 +387,7 @@ if __name__ == '__main__':
                 }
                 mysql_stat_list.append(falcon_format)
 
-                # json格式输出show master info的性能指标
+                # json格式输出show main info的性能指标
         if size_info:
             for _key, _value in size_info.items():
                 falcon_format = {
